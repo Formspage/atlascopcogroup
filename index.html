@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <link rel="icon" href="./Img/logoAtlas.png" type="image/png">
+  <meta charset="UTF-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <title>Atlas</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.2/css/all.min.css" />
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    .acesso-msg {
+      margin-top: 10px;
+      font-weight: bold;
+    }
+
+    .admin-buttons {
+      display: none;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="header-container">
+    <div class="background"></div>
+    <div class="header" style="display: flex; align-items: center;">
+      <img src="./Img/test.png" alt="Logo" style="width: 250px; height: auto; margin-right: 100px;" />
+      <div class="buttons">
+      </div>
+    </div>
+
+    <div class="home">
+      <div class="info-container">
+        <div class="infos">
+          <h2>Follow Up</h2>
+          <h1>Sistema de confirmação do prazo de entrega do fornecedor</h1>
+          <h2 class="description">Painel de Acesso e Gerenciamento de Dados</h2>
+        </div>
+
+        <div class="box-email">
+          <div class="password-container">
+            <input type="password" id="codigoAcesso" placeholder="Digite seu código de acesso" />
+            <i class="fas fa-eye" id="togglePassword" onclick="togglePasswordVisibility()"></i>
+          </div>
+          <button class="submit" onclick="verificarCodigo()">Entrar</button>
+        </div>
+
+        <div id="acessoMsg" class="acesso-msg"></div>
+
+        <div class="admin-buttons" id="adminButtons">
+          <input type="file" id="escolherArquivo" accept=".xlsx,.xls,.csv" onchange="importarExcel()" />
+          <label for="escolherArquivo">Importar Arquivo</label>
+          <button onclick="exportarExcel()">Exportar</button>
+        </div>
+
+        <div class="infos-footer">
+        </div>
+      </div>
+
+      <div class="image">
+        <img src="./Img/Home-image.svg" alt="" />
+      </div>
+    </div>
+
+    <!-- Seção da Tabela - Movida para fora da home para ocupar toda a largura -->
+    <div id="tabelaSecao" class="tabela-section" style="display: none;">
+      <h2>Tabela de Dados</h2>
+      <div class="table-actions">
+        <button onclick="voltarMenu()">Voltar</button>
+      </div>
+      <table id="tabelaDados">
+        <thead>
+          <tr>
+            <th>Purchasing Document</th>
+            <th>Item</th>
+            <th>Material</th>
+            <th>Description</th>
+            <th>Document Date</th>
+            <th>Vendor</th>
+            <th>Vendor Name</th>
+            <th>Order Qty to be Delivered</th>
+            <th>Requested Ship Date</th>
+            <th>Last Promise Delivery Date</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <div class="footer-copy">
+      <p>Copyright @ <span>Joyce Fernandes</span> 2025</p>
+    </div>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="app.js"></script>
+</body>
+
+</html>
