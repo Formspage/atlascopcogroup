@@ -282,22 +282,20 @@ function formatarDataISO(dataBrasileira) {
   return `${ano}-${mes.padStart(2, "0")}-${dia.padStart(2, "0")}`;
 }
 
-// Atualiza a data no Supabase
+// Salva data no Supabase
 async function salvarDataInput(input, id) {
   let novaData = input.value || "2001-01-01";
 
-  // Converter caso esteja em formato brasileiro
   if (novaData.includes("/")) {
     novaData = formatarDataISO(novaData);
   }
 
   try {
-    // Atualiza a data e retorna o registro atualizado
     const { data, error } = await supabaseClient
       .from("pedidos")
       .update({ last_promise_delivery_date: novaData })
       .eq("id", id)
-      .select(); // Importante para retornar valor atualizado
+      .select(); // Retorna o valor atualizado
 
     if (error) {
       console.error("Erro ao salvar data:", error);
@@ -305,11 +303,10 @@ async function salvarDataInput(input, id) {
       return;
     }
 
-    // Atualiza o input com o valor que realmente ficou salvo no Supabase
     if (data && data.length > 0) {
       let saved = data[0].last_promise_delivery_date;
       if (saved && saved.includes("T")) {
-        saved = saved.split("T")[0]; // remove horário
+        saved = saved.split("T")[0];
       }
       input.value = saved || novaData;
     }
@@ -319,7 +316,35 @@ async function salvarDataInput(input, id) {
   }
 }
 
-// === No carregamento das linhas da tabela ===
+// =====================================================
+// === Realtime
+// =====================================================
+function escutarMudancasTempoReal() {
+  supabaseClient
+    .channel("realtime_changes")
+    .on(
+      "postgres_changes",
+      { event: "UPDATE", schema: "public", table: "pedidos" },
+      (payload) => {
+        const updated = payload.new;
+
+        // Atualiza somente a célula que mudou
+        const row = document.querySelector(`tr[data-id="${updated.id}"]`);
+        if (row && !isUserEditing) {
+          const inputDate = row.querySelector('input[type="date"]');
+          if (inputDate) {
+            inputDate.value = updated.last_promise_delivery_date
+              ? updated.last_promise_delivery_date.split("T")[0]
+              : "2001-01-01";
+          }
+        }
+      }
+    )
+    .subscribe();
+}
+
+// =====================================================
+// === Durante o carregamento das linhas da tabela ===
 data.forEach((row) => {
   const tdDate = document.createElement("td");
   const inputDate = document.createElement("input");
@@ -333,7 +358,6 @@ data.forEach((row) => {
   inputDate.style.padding = "0.8rem";
   inputDate.style.fontSize = "1.3rem";
 
-  // Marcar que o usuário está editando
   inputDate.onfocus = () => {
     isUserEditing = true;
     currentEditingElement = inputDate;
@@ -347,60 +371,23 @@ data.forEach((row) => {
     }, 200);
   };
 
-  // Atualizar Supabase ao alterar
   inputDate.onchange = async () => {
-    if (!row.id) {
-      console.error("ID do registro ausente, não é possível atualizar");
-      return;
-    }
-
-    try {
-      isUserEditing = true;
-      currentEditingElement = inputDate;
-      console.log("Atualizando ID:", row.id, "para", inputDate.value);
-      await salvarDataInput(inputDate, row.id);
-    } finally {
-      setTimeout(() => {
-        isUserEditing = false;
-        currentEditingElement = null;
-      }, 200);
-    }
+    if (!row.id) return;
+    isUserEditing = true;
+    currentEditingElement = inputDate;
+    await salvarDataInput(inputDate, row.id);
+    setTimeout(() => {
+      isUserEditing = false;
+      currentEditingElement = null;
+    }, 200);
   };
 
   tdDate.appendChild(inputDate);
   tdDate.style.backgroundColor = "#e8f5e8";
   tdDate.style.minWidth = "18rem";
   tdDate.style.width = "18rem";
-
   tr.appendChild(tdDate);
 });
-
-// =====================================================
-// === Realtime
-// =====================================================
-function escutarMudancasTempoReal() {
-  // subscribe once: create a named channel and subscribe
-  supabaseClient
-    .channel("realtime_changes")
-    .on(
-      "postgres_changes",
-      { event: "*", schema: "public", table: "pedidos" },
-      (payload) => {
-        console.log("Mudança detectada:", payload);
-
-        // Só recarregar se o usuário não estiver editando
-        if (!isUserEditing) {
-          scrollPosition =
-            window.pageYOffset || document.documentElement.scrollTop;
-
-          carregarDados().then(() => {
-            window.scrollTo(0, scrollPosition);
-          });
-        }
-      },
-    )
-    .subscribe();
-}
 
 // =====================================================
 // === Exportação / Importação
