@@ -10,7 +10,6 @@ const supabaseKey =
 const { createClient } = supabase;
 const supabaseClient = createClient(supabaseUrl, supabaseKey);
 
-
 // =====================================================
 // === Variáveis Globais
 // =====================================================
