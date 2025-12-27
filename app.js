@@ -197,7 +197,11 @@ async function carregarDados(vendorFilter = null) {
 
     inputDate.type = "date";
 
+    // Se o retorno do banco vier com hora (ISO), pegar apenas a parte YYYY-MM-DD
     let dateValue = row.last_promise_delivery_date || "2001-01-01";
+    if (typeof dateValue === "string" && dateValue.includes("T")) {
+      dateValue = dateValue.split("T")[0];
+    }
     inputDate.value = dateValue;
 
     inputDate.style.width = "100%";
@@ -219,7 +223,20 @@ async function carregarDados(vendorFilter = null) {
       }, 200);
     };
 
-    inputDate.onchange = () => salvarDataInput(inputDate, row.id);
+    // IMPORTANT: when user changes date, set isUserEditing, await save, then unset
+    inputDate.onchange = async () => {
+      try {
+        isUserEditing = true;
+        currentEditingElement = inputDate;
+        await salvarDataInput(inputDate, row.id);
+      } finally {
+        // small timeout to avoid racing with realtime immediately
+        setTimeout(() => {
+          isUserEditing = false;
+          currentEditingElement = null;
+        }, 150);
+      }
+    };
 
     tdDate.appendChild(inputDate);
     tdDate.style.backgroundColor = "#e8f5e8";
@@ -268,6 +285,12 @@ function formatarDataISO(dataBrasileira) {
 async function salvarDataInput(input, id) {
   // pega valor do input (YYYY-MM-DD) — compatível com coluna date
   let novaData = input.value || "2001-01-01";
+  // garante formato YYYY-MM-DD (input type=date normalmente já fornece)
+  // Se usuário colar outro formato, tentamos converter
+  if (novaData.includes("/")) {
+    novaData = formatarDataISO(novaData);
+  }
+  // manter o input visual consistente até confirmação do banco
   input.value = novaData;
 
   try {
@@ -275,13 +298,25 @@ async function salvarDataInput(input, id) {
       .from("pedidos")
       .update({ last_promise_delivery_date: novaData })
       .eq("id", id)
-      .select(); // retorna o registro atualizado
+      .select();
 
     if (error) {
       console.error("Erro ao salvar data:", error);
       alert("Erro ao salvar a data. Tente novamente.");
-    } else {
+      return;
+    }
+
+    // se o banco devolveu o registro atualizado, sincroniza o input com o valor exato do banco
+    if (data && data.length > 0) {
+      let saved = data[0].last_promise_delivery_date;
+      if (typeof saved === "string" && saved.includes("T")) {
+        saved = saved.split("T")[0];
+      }
+      input.value = saved || novaData;
       console.log("Data atualizada com sucesso:", data);
+    } else {
+      // caso não tenha retornado registro, mantemos o valor que tentamos salvar
+      input.value = novaData;
     }
   } catch (error) {
     console.error("Erro ao salvar data:", error);
@@ -295,6 +330,7 @@ window.salvarDataInput = salvarDataInput;
 // === Realtime
 // =====================================================
 function escutarMudancasTempoReal() {
+  // subscribe once: create a named channel and subscribe
   supabaseClient
     .channel("realtime_changes")
     .on(
@@ -303,6 +339,7 @@ function escutarMudancasTempoReal() {
       (payload) => {
         console.log("Mudança detectada:", payload);
 
+        // Só recarregar se o usuário não estiver editando
         if (!isUserEditing) {
           scrollPosition =
             window.pageYOffset || document.documentElement.scrollTop;
