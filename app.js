@@ -65,7 +65,7 @@ async function carregarVendorCodes() {
 // =====================================================
 async function atualizarDatasVazias() {
   try {
-    // Ajuste: remover comparação com string vazia "" (gera erro em DATE)
+    // Atualiza somente onde last_promise_delivery_date IS NULL
     const { error } = await supabaseClient
       .from("pedidos")
       .update({ last_promise_delivery_date: "2001-01-01" })
@@ -155,6 +155,9 @@ async function carregarDados(vendorFilter = null) {
 
   if (userTipo !== "admin" && userTipo !== "") {
     query = query.eq("vendor", userTipo);
+  } else if (vendorFilter) {
+    // caso seja passado explicitamente
+    query = query.eq("vendor", vendorFilter);
   }
 
   const { data, error } = await query;
@@ -263,18 +266,22 @@ function formatarDataISO(dataBrasileira) {
 }
 
 async function salvarDataInput(input, id) {
+  // pega valor do input (YYYY-MM-DD) — compatível com coluna date
   let novaData = input.value || "2001-01-01";
   input.value = novaData;
 
   try {
-    const { error } = await supabaseClient
+    const { data, error } = await supabaseClient
       .from("pedidos")
       .update({ last_promise_delivery_date: novaData })
-      .eq("id", id);
+      .eq("id", id)
+      .select(); // retorna o registro atualizado
 
     if (error) {
       console.error("Erro ao salvar data:", error);
       alert("Erro ao salvar a data. Tente novamente.");
+    } else {
+      console.log("Data atualizada com sucesso:", data);
     }
   } catch (error) {
     console.error("Erro ao salvar data:", error);
