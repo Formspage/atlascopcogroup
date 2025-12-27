@@ -4,8 +4,12 @@
 const supabaseUrl = "https://jbmlfwcztaxsjajomkzi.supabase.co";
 const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpibWxmd2N6dGF4c2pham9ta3ppIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDg2NTE0MzQsImV4cCI6MjA2NDIyNzQzNH0.RBd9eTa6xe27-HA9FTJYutdk6W9xanCoaqc4t8F_iOA";
 
-const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+const supabaseClient = window.supabase.createClient(
+  supabaseUrl,
+  supabaseKey
+);
 
+window.supabaseClient = supabaseClient;
 // =====================================================
 // === Variáveis Globais
 // =====================================================
@@ -148,7 +152,7 @@ async function carregarDados(vendorFilter = null) {
     }
   }
 
-  let query = supabase.from("pedidos").select("*");
+  let query = supabaseClient.from("pedidos").select("*");
 
   if (userTipo !== "admin" && userTipo !== "") {
     query = query.eq("vendor", userTipo);
@@ -310,7 +314,7 @@ function escutarMudancasTempoReal() {
 // === Exportação / Importação
 // =====================================================
 async function exportarExcel() {
-  let query = supabase.from("pedidos").select("*");
+  let query = supabaseClient.from("pedidos").select("*");
 
   if (userTipo !== "admin" && userTipo !== "") {
     query = query.eq("vendor", userTipo);
