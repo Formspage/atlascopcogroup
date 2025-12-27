@@ -48,9 +48,7 @@ async function atualizarDatasVazias() {
     const { error } = await supabase
       .from('pedidos')
       .update({ last_promise_delivery_date: '2001-01-01' })
-      .or(
-        'last_promise_delivery_date.is.null,last_promise_delivery_date.eq.,last_promise_delivery_date.eq.""'
-      );
+      .or('last_promise_delivery_date.is.null');
 
     if (error) {
       console.error('Erro ao atualizar datas vazias:', error);
@@ -200,18 +198,6 @@ async function carregarDados() {
   }
 }
 
-function formatarDataBrasileira(dataISO) {
-  if (!dataISO || dataISO === '2001-01-01') return '';
-  const [ano, mes, dia] = dataISO.split('-');
-  return `${dia}/${mes}/${ano}`;
-}
-
-function formatarDataISO(dataBrasileira) {
-  if (!dataBrasileira) return '2001-01-01';
-  const [dia, mes, ano] = dataBrasileira.split('/');
-  return `${ano}-${mes.padStart(2, '0')}-${dia.padStart(2, '0')}`;
-}
-
 async function salvarDataInput(input, id) {
   let novaData = input.value || '2001-01-01';
 
@@ -251,5 +237,4 @@ function escutarMudancasTempoReal() {
     .subscribe();
 }
 
-window.exportarExcel = exportarExcel;
 window.verificarCodigo = verificarCodigo;
