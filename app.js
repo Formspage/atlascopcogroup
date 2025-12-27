@@ -2,18 +2,18 @@
 // =====================================================
 // === Supabase Config
 // =====================================================
-const supabaseUrl = "https://jbmlfwcztaxsjajomkzi.supabase.co";
-const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpibWxmd2N6dGF4c2pham9ta3ppIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDg2NTE0MzQsImV4cCI6MjA2NDIyNzQzNH0.RBd9eTa6xe27-HA9FTJYutdk6W9xanCoaqc4t8F_iOA";
+const supabaseUrl = 'https://jbmlfwcztaxsjajomkzi.supabase.co';
+const supabaseKey =
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpibWxmd2N6dGF4c2pham9ta3ppIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDg2NTE0MzQsImV4cCI6MjA2NDIyNzQzNH0.RBd9eTa6xe27-HA9FTJYutdk6W9xanCoaqc4t8F_iOA';
 
-const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
-window.supabaseClient = supabaseClient;
+const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
 
 // =====================================================
 // === Variáveis Globais
 // =====================================================
-const adminCode = "atlas2025";
+const adminCode = 'atlas2025';
 let vendorCodes = [];
-let userTipo = "";
+let userTipo = '';
 
 let isUserEditing = false;
 let currentEditingElement = null;
@@ -22,12 +22,11 @@ let scrollPosition = 0;
 // =====================================================
 // === Inicialização
 // =====================================================
-window.addEventListener("DOMContentLoaded", async () => {
+window.addEventListener('DOMContentLoaded', async () => {
   await carregarVendorCodes();
-  // Mantemos a rotina de normalizar datas nulas, mas apenas para NULL (não para strings vazias).
-  // Isso evita sobrescrever valores válidos.
+  // Normaliza apenas NULLs (não sobrescreve strings/valores válidos)
   await atualizarDatasVazias();
-  console.log("Sistema de atualização em tempo real iniciado");
+  console.log('Sistema de atualização em tempo real iniciado');
 });
 
 // =====================================================
@@ -35,58 +34,54 @@ window.addEventListener("DOMContentLoaded", async () => {
 // =====================================================
 async function carregarVendorCodes() {
   try {
-    const { data, error } = await supabaseClient
-      .from("pedidos")
-      .select("vendor")
-      .not("vendor", "is", null);
+    const { data, error } = await supabase
+      .from('pedidos')
+      .select('vendor')
+      .not('vendor', 'is', null);
 
     if (error) {
-      console.error("Erro ao carregar vendor codes:", error);
+      console.error('Erro ao carregar vendor codes:', error);
       return;
     }
 
     const uniqueVendors = [
       ...new Set(
         data
-          .map((row) => row.vendor)
-          .filter((vendor) => vendor && vendor.toString().trim() !== "")
+          .map(row => row.vendor)
+          .filter(vendor => vendor && vendor.toString().trim() !== '')
       ),
     ];
 
     vendorCodes = uniqueVendors;
-    console.log("Vendor codes carregados:", vendorCodes);
+    console.log('Vendor codes carregados:', vendorCodes);
   } catch (error) {
-    console.error("Erro ao carregar vendor codes:", error);
+    console.error('Erro ao carregar vendor codes:', error);
   }
 }
 
 // =====================================================
 // === Atualização de Datas Vazias
 // =====================================================
-// Atualiza somente registros cuja coluna last_promise_delivery_date IS NULL
-// (não mexe em strings vazias — corrige somente NULLs)
+// Atualiza apenas registros onde last_promise_delivery_date IS NULL
 async function atualizarDatasVazias() {
   try {
-    const { data, error } = await supabaseClient
-      .from("pedidos")
-      .update({ last_promise_delivery_date: "2001-01-01" })
-      .is("last_promise_delivery_date", null)
-      .select("id");
+    const { data, error } = await supabase
+      .from('pedidos')
+      .update({ last_promise_delivery_date: '2001-01-01' })
+      .is('last_promise_delivery_date', null)
+      .select('id');
 
     if (error) {
-      console.error("Erro ao atualizar datas vazias:", error);
+      console.error('Erro ao atualizar datas vazias:', error);
     } else {
-      if (data && data.length) {
-        console.log(
-          `Datas vazias atualizadas (${data.length} registros):`,
-          data.map((r) => r.id)
-        );
+      if (data && data.length > 0) {
+        console.log(`Datas vazias atualizadas (${data.length} registros).`);
       } else {
-        console.log("Nenhuma data nula encontrada para atualizar.");
+        console.log('Nenhuma data nula encontrada para atualizar.');
       }
     }
   } catch (error) {
-    console.error("Erro ao atualizar datas vazias:", error);
+    console.error('Erro ao atualizar datas vazias:', error);
   }
 }
 
@@ -94,39 +89,38 @@ async function atualizarDatasVazias() {
 // === Acesso
 // =====================================================
 function togglePasswordVisibility() {
-  const passwordInput = document.getElementById("codigoAcesso");
-  const toggleIcon = document.getElementById("togglePassword");
-
+  const passwordInput = document.getElementById('codigoAcesso');
+  const toggleIcon = document.getElementById('togglePassword');
   if (!passwordInput || !toggleIcon) return;
 
-  if (passwordInput.type === "password") {
-    passwordInput.type = "text";
-    toggleIcon.classList.remove("fa-eye");
-    toggleIcon.classList.add("fa-eye-slash");
+  if (passwordInput.type === 'password') {
+    passwordInput.type = 'text';
+    toggleIcon.classList.remove('fa-eye');
+    toggleIcon.classList.add('fa-eye-slash');
   } else {
-    passwordInput.type = "password";
-    toggleIcon.classList.remove("fa-eye-slash");
-    toggleIcon.classList.add("fa-eye");
+    passwordInput.type = 'password';
+    toggleIcon.classList.remove('fa-eye-slash');
+    toggleIcon.classList.add('fa-eye');
   }
 }
 window.togglePasswordVisibility = togglePasswordVisibility;
 
 async function verificarCodigo() {
-  const codigo = document.getElementById("codigoAcesso").value.trim();
-  const acessoMsg = document.getElementById("acessoMsg");
+  const codigo = document.getElementById('codigoAcesso').value.trim();
+  const acessoMsg = document.getElementById('acessoMsg');
 
   if (vendorCodes.length === 0) {
     await carregarVendorCodes();
   }
 
   if (codigo === adminCode) {
-    userTipo = "admin";
-    acessoMsg.textContent = "Acesso administrativo concedido";
+    userTipo = 'admin';
+    acessoMsg.textContent = 'Acesso administrativo concedido';
 
-    document.getElementById("adminButtons").style.display = "block";
-    document.getElementById("tabelaSecao").style.display = "block";
-    const img = document.querySelector(".home .image");
-    if (img) img.style.display = "none";
+    document.getElementById('adminButtons').style.display = 'block';
+    document.getElementById('tabelaSecao').style.display = 'block';
+    const img = document.querySelector('.home .image');
+    if (img) img.style.display = 'none';
 
     await carregarDados();
     escutarMudancasTempoReal();
@@ -134,15 +128,15 @@ async function verificarCodigo() {
     userTipo = codigo;
     acessoMsg.textContent = `Acesso de vendor concedido (${codigo})`;
 
-    document.getElementById("adminButtons").style.display = "none";
-    document.getElementById("tabelaSecao").style.display = "block";
-    const img = document.querySelector(".home .image");
-    if (img) img.style.display = "none";
+    document.getElementById('adminButtons').style.display = 'none';
+    document.getElementById('tabelaSecao').style.display = 'block';
+    const img = document.querySelector('.home .image');
+    if (img) img.style.display = 'none';
 
     await carregarDados(codigo);
     escutarMudancasTempoReal();
   } else {
-    acessoMsg.textContent = "Código de acesso inválido";
+    acessoMsg.textContent = 'Código de acesso inválido';
   }
 }
 window.verificarCodigo = verificarCodigo;
@@ -155,90 +149,82 @@ async function carregarDados(vendorFilter = null) {
   let editingValue = null;
 
   if (currentEditingElement) {
-    const row = currentEditingElement.closest("tr");
+    const row = currentEditingElement.closest('tr');
     if (row) {
-      editingRowId = row.getAttribute("data-id");
+      editingRowId = row.getAttribute('data-id');
       editingValue = currentEditingElement.value;
     }
   }
 
-  let query = supabaseClient.from("pedidos").select("*");
+  let query = supabase.from('pedidos').select('*');
 
-  if (userTipo !== "admin" && userTipo !== "") {
-    query = query.eq("vendor", userTipo);
+  if (userTipo !== 'admin' && userTipo !== '') {
+    query = query.eq('vendor', userTipo);
   } else if (vendorFilter) {
-    query = query.eq("vendor", vendorFilter);
+    query = query.eq('vendor', vendorFilter);
   }
 
   const { data, error } = await query;
 
   if (error) {
-    console.error("Erro ao carregar dados:", error);
+    console.error('Erro ao carregar dados:', error);
     return;
   }
 
-  const tbody = document.querySelector("#tabelaDados tbody");
+  const tbody = document.querySelector('#tabelaDados tbody');
   if (!tbody) {
-    console.error("Tabela não encontrada (#tabelaDados tbody).");
+    console.error('#tabelaDados tbody não encontrado.');
     return;
   }
-  tbody.innerHTML = "";
+  tbody.innerHTML = '';
 
-  data.forEach((row) => {
-    const tr = document.createElement("tr");
-    tr.setAttribute("data-id", row.id);
+  data.forEach(row => {
+    const tr = document.createElement('tr');
+    tr.setAttribute('data-id', row.id);
 
-    // Cria as primeiras células
     const cells = [
-      row.purchasing_document || "",
-      row.item || "",
-      row.material || "",
-      row.description || "",
-      // document_date pode vir como YYYY-MM-DD ou ISO completo
-      row.document_date ? (typeof row.document_date === "string" && row.document_date.includes("T") ? row.document_date.split("T")[0] : row.document_date) : "",
-      row.vendor || "",
-      row.vendor_name || "",
-      row.order_qty_to_be_delivered || "",
-      row.requested_ship_date ? (typeof row.requested_ship_date === "string" && row.requested_ship_date.includes("T") ? row.requested_ship_date.split("T")[0] : row.requested_ship_date) : ""
+      row.purchasing_document || '',
+      row.item || '',
+      row.material || '',
+      row.description || '',
+      // document_date: remover hora se existir
+      row.document_date ? (typeof row.document_date === 'string' && row.document_date.includes('T') ? row.document_date.split('T')[0] : row.document_date) : '',
+      row.vendor || '',
+      row.vendor_name || '',
+      row.order_qty_to_be_delivered || '',
+      row.requested_ship_date ? (typeof row.requested_ship_date === 'string' && row.requested_ship_date.includes('T') ? row.requested_ship_date.split('T')[0] : row.requested_ship_date) : '',
     ];
 
-    cells.forEach((cellData) => {
-      const td = document.createElement("td");
+    cells.forEach(cellData => {
+      const td = document.createElement('td');
       td.textContent = cellData;
       tr.appendChild(td);
     });
 
-    // Célula editável para last_promise_delivery_date
-    const tdDate = document.createElement("td");
-    const inputDate = document.createElement("input");
-    inputDate.type = "date";
+    const tdDate = document.createElement('td');
+    const inputDate = document.createElement('input');
 
-    // Normaliza valor vindo do banco (remove hora se houver). Se for nulo, deixa vazio.
-    let dateValue = "";
+    inputDate.type = 'date';
+
+    // Normaliza valor vindo do banco (YYYY-MM-DD) ou vazio
+    let dateValue = '';
     if (row.last_promise_delivery_date) {
-      if (typeof row.last_promise_delivery_date === "string" && row.last_promise_delivery_date.includes("T")) {
-        dateValue = row.last_promise_delivery_date.split("T")[0];
+      if (typeof row.last_promise_delivery_date === 'string' && row.last_promise_delivery_date.includes('T')) {
+        dateValue = row.last_promise_delivery_date.split('T')[0];
       } else {
         dateValue = row.last_promise_delivery_date;
       }
-    } else if (row.last_promise_delivery_date === "2001-01-01") {
-      // Se você tiver o sentinel 2001-01-01 como padrão em algumas rotinas, opcionalmente converter pra vazio visual
-      dateValue = "";
+    } else {
+      dateValue = ''; // mostra vazio quando não houver data
     }
+    inputDate.value = dateValue; // ISO YYYY-MM-DD or ''
 
-    inputDate.value = dateValue; // formato YYYY-MM-DD ou ""
+    inputDate.style.width = '100%';
+    inputDate.style.minWidth = '16rem';
+    inputDate.style.border = '1px solid #ccc';
+    inputDate.style.padding = '0.8rem';
+    inputDate.style.fontSize = '1.3rem';
 
-    // Estilos
-    inputDate.style.width = "100%";
-    inputDate.style.minWidth = "16rem";
-    inputDate.style.border = "1px solid #ccc";
-    inputDate.style.padding = "0.8rem";
-    inputDate.style.fontSize = "1.3rem";
-    tdDate.style.backgroundColor = "#e8f5e8";
-    tdDate.style.minWidth = "18rem";
-    tdDate.style.width = "18rem";
-
-    // Handlers
     inputDate.onfocus = () => {
       isUserEditing = true;
       currentEditingElement = inputDate;
@@ -246,39 +232,29 @@ async function carregarDados(vendorFilter = null) {
     };
 
     inputDate.onblur = () => {
-      // mantém pequeno delay para evitar conflito com realtime
       setTimeout(() => {
         isUserEditing = false;
         currentEditingElement = null;
       }, 200);
     };
 
-    inputDate.onchange = async () => {
-      if (!row.id) {
-        console.error("ID do registro ausente, não é possível atualizar");
-        return;
-      }
-      try {
-        isUserEditing = true;
-        currentEditingElement = inputDate;
-        await salvarDataInput(inputDate, row.id);
-      } finally {
-        setTimeout(() => {
-          isUserEditing = false;
-          currentEditingElement = null;
-        }, 200);
-      }
-    };
+    inputDate.onchange = () => salvarDataInput(inputDate, row.id);
 
     tdDate.appendChild(inputDate);
+    tdDate.style.backgroundColor = '#e8f5e8';
+    tdDate.style.minWidth = '18rem';
+    tdDate.style.width = '18rem';
+
     tr.appendChild(tdDate);
     tbody.appendChild(tr);
   });
 
-  // Restaura edição se necessário
   if (editingRowId && editingValue !== null) {
     setTimeout(() => {
-      const editingRow = document.querySelector(`tr[data-id="${editingRowId}"]`);
+      const editingRow = document.querySelector(
+        `tr[data-id="${editingRowId}"]`
+      );
+
       if (editingRow) {
         const dateInput = editingRow.querySelector('input[type="date"]');
         if (dateInput) {
@@ -293,66 +269,82 @@ async function carregarDados(vendorFilter = null) {
   }
 }
 
-/// =====================================================
-// === Datas
 // =====================================================
-function formatarDataISO(data) {
-  if (!data) return "2001-01-01";
+// === Datas (formatação apenas para exibição em export)
+// =====================================================
+function formatarDataBrasileira(dataISO) {
+  if (!dataISO) return '';
+  const d = (typeof dataISO === 'string' && dataISO.includes('T')) ? dataISO.split('T')[0] : dataISO;
+  const [ano, mes, dia] = d.split('-');
+  if (!dia || !mes || !ano) return '';
+  return `${dia}/${mes}/${ano}`;
+}
 
-  // Já está em ISO
-  if (data.includes("-")) return data;
-
-  // Converte BR → ISO
-  const [dia, mes, ano] = data.split("/");
-  return `${ano}-${mes.padStart(2, "0")}-${dia.padStart(2, "0")}`;
+function formatarDataISO(dataBrasileira) {
+  if (!dataBrasileira) return null;
+  if (typeof dataBrasileira === 'string' && dataBrasileira.includes('-')) return dataBrasileira;
+  const [dia, mes, ano] = dataBrasileira.split('/');
+  if (!dia || !mes || !ano) return null;
+  return `${ano}-${mes.padStart(2, '0')}-${dia.padStart(2, '0')}`;
 }
 
 // =====================================================
-// === Salvar data no Supabase
+// === Salvar data no Supabase (corrigido)
 // =====================================================
 async function salvarDataInput(input, id) {
-  const novaData = formatarDataISO(input.value);
+  // input.value já vem como YYYY-MM-DD (ou "" se vazio)
+  const novaData = input.value ? input.value : null; // null para limpar no banco
 
-  const { data, error } = await supabaseClient
-    .from("pedidos")
-    .update({
-      last_promise_delivery_date: novaData
-    })
-    .eq("id", id)
-    .select("last_promise_delivery_date");
+  try {
+    const { data, error } = await supabase
+      .from('pedidos')
+      .update({ last_promise_delivery_date: novaData })
+      .eq('id', id)
+      .select('last_promise_delivery_date');
 
-  if (error) {
-    console.error("Erro ao salvar data:", error);
-    alert("Erro ao salvar a data");
-    return;
-  }
+    if (error) {
+      console.error('Erro ao salvar data:', error);
+      alert('Erro ao salvar a data. Verifique permissões/RLS.');
+      return;
+    }
 
-  // Garante que o input fique com o valor REAL do banco
-  if (data && data.length > 0) {
-    input.value = data[0].last_promise_delivery_date;
+    if (data && data.length > 0) {
+      const saved = data[0].last_promise_delivery_date;
+      input.value = saved ? (typeof saved === 'string' && saved.includes('T') ? saved.split('T')[0] : saved) : '';
+      console.log(`Data salva (id=${id}):`, input.value);
+    } else {
+      // nenhum retorno: alerta leve
+      console.warn('Update retornou sem dados (id=', id, ')');
+    }
+  } catch (error) {
+    console.error('Erro inesperado ao salvar data:', error);
+    alert('Erro inesperado ao salvar a data.');
   }
 }
+window.salvarDataInput = salvarDataInput;
 
 // =====================================================
 // === Realtime
 // =====================================================
 function escutarMudancasTempoReal() {
-  supabaseClient
-    .channel("realtime_changes")
+  supabase
+    .channel('realtime_changes')
     .on(
-      "postgres_changes",
-      { event: "UPDATE", schema: "public", table: "pedidos" },
-      (payload) => {
+      'postgres_changes',
+      { event: 'UPDATE', schema: 'public', table: 'pedidos' },
+      payload => {
+        // Atualiza somente a célula que mudou
         const updated = payload.new;
+        if (!updated || typeof updated.id === 'undefined') return;
+
         const row = document.querySelector(`tr[data-id="${updated.id}"]`);
-
-        if (!row || isUserEditing) return;
-
-        const inputDate = row.querySelector('input[type="date"]');
-        if (inputDate) {
-          inputDate.value = updated.last_promise_delivery_date
-            ? updated.last_promise_delivery_date.split("T")[0]
-            : "2001-01-01";
+        if (row && !isUserEditing) {
+          const inputDate = row.querySelector('input[type="date"]');
+          if (inputDate) {
+            inputDate.value = updated.last_promise_delivery_date
+              ? (typeof updated.last_promise_delivery_date === 'string' && updated.last_promise_delivery_date.includes('T') ? updated.last_promise_delivery_date.split('T')[0] : updated.last_promise_delivery_date)
+              : '';
+          }
         }
       }
     )
@@ -360,134 +352,80 @@ function escutarMudancasTempoReal() {
 }
 
 // =====================================================
-// === Durante o carregamento das linhas da tabela ===
-// =====================================================
-data.forEach((row) => {
-  const tdDate = document.createElement("td");
-  const inputDate = document.createElement("input");
-
-  inputDate.type = "date";
-
-  // ⚠️ SEMPRE ISO
-  inputDate.value = row.last_promise_delivery_date
-    ? row.last_promise_delivery_date.split("T")[0]
-    : "2001-01-01";
-
-  inputDate.style.width = "100%";
-  inputDate.style.minWidth = "16rem";
-  inputDate.style.border = "1px solid #ccc";
-  inputDate.style.padding = "0.8rem";
-  inputDate.style.fontSize = "1.3rem";
-
-  inputDate.onfocus = () => {
-    isUserEditing = true;
-    currentEditingElement = inputDate;
-  };
-
-  inputDate.onblur = () => {
-    setTimeout(() => {
-      isUserEditing = false;
-      currentEditingElement = null;
-    }, 200);
-  };
-
-  inputDate.onchange = async () => {
-    if (!row.id) return;
-
-    isUserEditing = true;
-    currentEditingElement = inputDate;
-
-    await salvarDataInput(inputDate, row.id);
-
-    setTimeout(() => {
-      isUserEditing = false;
-      currentEditingElement = null;
-    }, 200);
-  };
-
-  tdDate.appendChild(inputDate);
-  tdDate.style.backgroundColor = "#e8f5e8";
-  tdDate.style.minWidth = "18rem";
-  tdDate.style.width = "18rem";
-
-  tr.appendChild(tdDate);
-});
-
-// =====================================================
 // === Exportação / Importação
 // =====================================================
 async function exportarExcel() {
-  let query = supabaseClient.from("pedidos").select("*");
+  let query = supabase.from('pedidos').select('*');
 
-  if (userTipo !== "admin" && userTipo !== "") {
-    query = query.eq("vendor", userTipo);
+  if (userTipo !== 'admin' && userTipo !== '') {
+    query = query.eq('vendor', userTipo);
   }
 
   const { data, error } = await query;
 
   if (error) {
-    console.error("Erro ao carregar dados para exportação:", error);
-    alert("Erro ao carregar dados para exportação");
+    console.error('Erro ao carregar dados para exportação:', error);
+    alert('Erro ao carregar dados para exportação');
     return;
   }
 
   const worksheetData = [
     [
-      "Purchasing Document",
-      "Item",
-      "Material",
-      "Description",
-      "Document Date",
-      "Vendor",
-      "Vendor Name",
-      "Order Qty to be Delivered",
-      "Requested Ship Date",
-      "Last Promise Delivery Date",
+      'Purchasing Document',
+      'Item',
+      'Material',
+      'Description',
+      'Document Date',
+      'Vendor',
+      'Vendor Name',
+      'Order Qty to be Delivered',
+      'Requested Ship Date',
+      'Last Promise Delivery Date',
     ],
-    ...data.map((row) => [
-      row.purchasing_document || "",
-      row.item || "",
-      row.material || "",
-      row.description || "",
-      formatarDataBrasileira(row.document_date) || "",
-      row.vendor || "",
-      row.vendor_name || "",
-      row.order_qty_to_be_delivered || "",
-      formatarDataBrasileira(row.requested_ship_date) || "",
-      formatarDataBrasileira(row.last_promise_delivery_date) || "",
+    ...data.map(row => [
+      row.purchasing_document || '',
+      row.item || '',
+      row.material || '',
+      row.description || '',
+      formatarDataBrasileira(row.document_date) || '',
+      row.vendor || '',
+      row.vendor_name || '',
+      row.order_qty_to_be_delivered || '',
+      formatarDataBrasileira(row.requested_ship_date) || '',
+      formatarDataBrasileira(row.last_promise_delivery_date) || '',
     ]),
   ];
 
   const ws = XLSX.utils.aoa_to_sheet(worksheetData);
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Pedidos");
+  XLSX.utils.book_append_sheet(wb, ws, 'Pedidos');
 
   const fileName =
-    userTipo === "admin"
-      ? "AtualizaAbline_Completo.xlsx"
+    userTipo === 'admin'
+      ? 'AtualizaAbline_Completo.xlsx'
       : `AtualizaAbline_${userTipo}.xlsx`;
 
   XLSX.writeFile(wb, fileName);
 }
 window.exportarExcel = exportarExcel;
 
-async function importarExcel() {
-  const fileInput = document.getElementById("escolherArquivo") || document.getElementById("adminInputFile");
+function importarExcel() {
+  const fileInput = document.getElementById('escolherArquivo') || document.getElementById('adminInputFile');
   const file = fileInput && fileInput.files ? fileInput.files[0] : null;
   if (!file) return;
 
   const reader = new FileReader();
   reader.onload = async (e) => {
     const data = new Uint8Array(e.target.result);
-    const workbook = XLSX.read(data, { type: "array" });
+    const workbook = XLSX.read(data, { type: 'array' });
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
     const json = XLSX.utils.sheet_to_json(sheet);
 
-    // Limpar dados existentes antes de importar novos (perigoso, mas mantém comportamento original)
-    await supabaseClient.from('pedidos').delete().neq('id', 0);
+    // Limpar dados existentes antes de importar novos
+    await supabase.from('pedidos').delete().neq('id', 0);
 
     for (const row of json) {
-      await supabaseClient.from('pedidos').insert({
+      await supabase.from('pedidos').insert({
         purchasing_document: row['Purchasing Document'],
         item: row['Item'],
         material: row['Material'],
@@ -519,7 +457,6 @@ function formatDate(value) {
   if (typeof value === 'string') {
     const d = new Date(value);
     if (!isNaN(d)) return d.toISOString().split('T')[0];
-    // tenta reconhecer já no formato YYYY-MM-DD
     if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
     return '';
   }
@@ -530,17 +467,12 @@ function formatDate(value) {
 // === Voltar ao Menu
 // =====================================================
 function voltarMenu() {
-  const codigo = document.getElementById("codigoAcesso");
-  if (codigo) codigo.value = "";
-  const acessoMsg = document.getElementById("acessoMsg");
-  if (acessoMsg) acessoMsg.textContent = "";
-  const adminButtons = document.getElementById("adminButtons");
-  if (adminButtons) adminButtons.style.display = "none";
-  const tabelaSecao = document.getElementById("tabelaSecao");
-  if (tabelaSecao) tabelaSecao.style.display = "none";
-  const tbody = document.querySelector("#tabelaDados tbody");
-  if (tbody) tbody.innerHTML = "";
-  const img = document.querySelector(".home .image");
-  if (img) img.style.display = "flex";
+  document.getElementById('codigoAcesso').value = '';
+  document.getElementById('acessoMsg').textContent = '';
+  document.getElementById('adminButtons').style.display = 'none';
+  document.getElementById('tabelaSecao').style.display = 'none';
+  document.querySelector('#tabelaDados tbody').innerHTML = '';
+  const img = document.querySelector('.home .image');
+  if (img) img.style.display = 'flex';
 }
 window.voltarMenu = voltarMenu;
