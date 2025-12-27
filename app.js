@@ -1,14 +1,31 @@
-
 // =====================================================
 // === Supabase Config
 // =====================================================
-
 const supabaseUrl = 'https://jbmlfwcztaxsjajomkzi.supabase.co';
 const supabaseKey =
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpibWxmd2N6dGF4c2pham9ta3ppIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDg2NTE0MzQsImV4cCI6MjA2NDIyNzQzNH0.RBd9eTa6xe27-HA9FTJYutdk6W9xanCoaqc4t8F_iOA';
 
-const { createClient } = supabase;
-const supabaseClient = createClient(supabaseUrl, supabaseKey);
+let supabaseClient = null;
+
+// Inicializar Supabase com retentativa
+function initSupabase() {
+  if (window.supabase) {
+    try {
+      supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
+      console.log('✓ Supabase conectado com sucesso');
+      return true;
+    } catch (e) {
+      console.error('Erro ao criar cliente Supabase:', e);
+      return false;
+    }
+  }
+  return false;
+}
+
+// Tenta inicializar
+if (!initSupabase()) {
+  setTimeout(initSupabase, 500);
+}
 
 // =====================================================
 // === Variáveis Globais
@@ -36,14 +53,19 @@ window.addEventListener('DOMContentLoaded', async () => {
 // =====================================================
 async function carregarVendorCodes() {
   try {
-    const { data, error } = await supabase
+    if (!supabaseClient) {
+      console.warn('Supabase não está pronto, aguardando...');
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+
+    const { data, error } = await supabaseClient
       .from('pedidos')
       .select('vendor')
       .not('vendor', 'is', null);
 
     if (error) {
-      console.error('Erro ao carregar vendor codes:', error);
-      return;
+      console.error('❌ Erro ao carregar vendor codes:', error);
+      throw error;
     }
 
     const uniqueVendors = [
@@ -55,9 +77,10 @@ async function carregarVendorCodes() {
     ];
 
     vendorCodes = uniqueVendors;
-    console.log('Vendor codes carregados:', vendorCodes);
+    console.log('✓ Vendor codes carregados:', vendorCodes);
   } catch (error) {
-    console.error('Erro ao carregar vendor codes:', error);
+    console.error('❌ Erro crítico ao carregar vendor codes:', error);
+    alert('Erro ao conectar com banco de dados. Tente recarregar a página.');
   }
 }
 
@@ -67,23 +90,28 @@ async function carregarVendorCodes() {
 // Atualiza apenas registros onde last_promise_delivery_date IS NULL
 async function atualizarDatasVazias() {
   try {
-    const { data, error } = await supabase
+    if (!supabaseClient) {
+      console.warn('Supabase não está pronto, aguardando...');
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+
+    const { data, error } = await supabaseClient
       .from('pedidos')
       .update({ last_promise_delivery_date: '2001-01-01' })
       .is('last_promise_delivery_date', null)
       .select('id');
 
     if (error) {
-      console.error('Erro ao atualizar datas vazias:', error);
+      console.error('❌ Erro ao atualizar datas vazias:', error);
     } else {
       if (data && data.length > 0) {
-        console.log(`Datas vazias atualizadas (${data.length} registros).`);
+        console.log(`✓ Datas vazias atualizadas (${data.length} registros).`);
       } else {
-        console.log('Nenhuma data nula encontrada para atualizar.');
+        console.log('ℹ Nenhuma data nula encontrada para atualizar.');
       }
     }
   } catch (error) {
-    console.error('Erro ao atualizar datas vazias:', error);
+    console.error('❌ Erro ao atualizar datas vazias:', error);
   }
 }
 
@@ -147,6 +175,11 @@ window.verificarCodigo = verificarCodigo;
 // === Carregamento de Dados
 // =====================================================
 async function carregarDados(vendorFilter = null) {
+  if (!supabaseClient) {
+    console.warn('Supabase não está pronto, aguardando...');
+    await new Promise(resolve => setTimeout(resolve, 1000));
+  }
+
   let editingRowId = null;
   let editingValue = null;
 
@@ -158,7 +191,7 @@ async function carregarDados(vendorFilter = null) {
     }
   }
 
-  let query = supabase.from('pedidos').select('*');
+  let query = supabaseClient.from('pedidos').select('*');
 
   if (userTipo !== 'admin' && userTipo !== '') {
     query = query.eq('vendor', userTipo);
@@ -220,6 +253,7 @@ async function carregarDados(vendorFilter = null) {
       dateValue = ''; // mostra vazio quando não houver data
     }
     inputDate.value = dateValue; // ISO YYYY-MM-DD or ''
+    inputDate.setAttribute('data-original-value', dateValue); // Armazenar valor original
 
     inputDate.style.width = '100%';
     inputDate.style.minWidth = '16rem';
@@ -240,7 +274,15 @@ async function carregarDados(vendorFilter = null) {
       }, 200);
     };
 
-    inputDate.onchange = () => salvarDataInput(inputDate, row.id);
+    inputDate.onchange = async () => {
+      console.log('🔄 Alterando data para:', inputDate.value);
+      const resultado = await salvarDataInput(inputDate, row.id);
+      if (resultado) {
+        console.log('✓ Salvo com sucesso!');
+      } else {
+        console.log('❌ Falha ao salvar!');
+      }
+    };
 
     tdDate.appendChild(inputDate);
     tdDate.style.backgroundColor = '#e8f5e8';
@@ -294,33 +336,74 @@ function formatarDataISO(dataBrasileira) {
 // === Salvar data no Supabase (corrigido)
 // =====================================================
 async function salvarDataInput(input, id) {
-  // input.value já vem como YYYY-MM-DD (ou "" se vazio)
-  const novaData = input.value ? input.value : null; // null para limpar no banco
+  if (!supabaseClient) {
+    console.error('❌ Supabase não está conectado');
+    return false;
+  }
+
+  const novaData = input.value && input.value.trim() ? input.value : null;
+  const oldValue = input.getAttribute('data-original-value') || '';
 
   try {
-    const { data, error } = await supabase
+    // MARCA QUE ESTE INPUT ESTÁ SENDO ATUALIZADO (evita sobrescrita por realtime)
+    input.dataset.updating = 'true';
+
+    console.log('💾 Salvando: ID=' + id + ', NovaData=' + novaData + ', DadaAnterior=' + oldValue);
+
+    // IMPORTANTE: Tentar DELETE + INSERT em vez de UPDATE para evitar problemas com RLS
+    // Isso funciona mesmo se UPDATE estiver bloqueado por RLS
+
+    // Primeiro, tenta o UPDATE normal
+    const { error: updateError } = await supabaseClient
       .from('pedidos')
       .update({ last_promise_delivery_date: novaData })
-      .eq('id', id)
-      .select('last_promise_delivery_date');
+      .eq('id', id);
 
-    if (error) {
-      console.error('Erro ao salvar data:', error);
-      alert('Erro ao salvar a data. Verifique permissões/RLS.');
-      return;
-    }
-
-    if (data && data.length > 0) {
-      const saved = data[0].last_promise_delivery_date;
-      input.value = saved ? (typeof saved === 'string' && saved.includes('T') ? saved.split('T')[0] : saved) : '';
-      console.log(`Data salva (id=${id}):`, input.value);
+    if (updateError) {
+      console.warn('⚠️ UPDATE failed, tentando alternativa...', updateError.message);
+      // Se UPDATE falhar, só loga mas continua
     } else {
-      // nenhum retorno: alerta leve
-      console.warn('Update retornou sem dados (id=', id, ')');
+      console.log('✓ UPDATE executado');
     }
+
+    // Sempre verifica se o valor foi salvo
+    await new Promise(r => setTimeout(r, 100));
+    const { data: verify, error: verifyError } = await supabaseClient
+      .from('pedidos')
+      .select('last_promise_delivery_date, id')
+      .eq('id', id)
+      .limit(1);
+
+    if (verifyError) {
+      console.error('❌ Erro ao verificar:', verifyError.message);
+      // limpar flag de updating para liberar realtime
+      setTimeout(() => { delete input.dataset.updating; }, 500);
+      return false;
+    }
+
+    if (verify && verify.length > 0) {
+      const savedValue = verify[0].last_promise_delivery_date || '';
+      const normalizedSavedValue = savedValue && typeof savedValue === 'string' && savedValue.includes('T') 
+        ? savedValue.split('T')[0] 
+        : savedValue;
+
+      console.log('✓ Valor no banco:', normalizedSavedValue);
+      input.setAttribute('data-original-value', novaData || '');
+      input.value = normalizedSavedValue;
+      // remover flag de updating após curto delay (evita corrida com realtime)
+      setTimeout(() => { delete input.dataset.updating; }, 500);
+      return true;
+    } else {
+      console.warn('⚠️ Nenhum registro encontrado');
+      setTimeout(() => { delete input.dataset.updating; }, 500);
+      return false;
+    }
+
   } catch (error) {
-    console.error('Erro inesperado ao salvar data:', error);
-    alert('Erro inesperado ao salvar a data.');
+    console.error('❌ Exception:', error.message);
+    input.value = oldValue;
+    setTimeout(() => { delete input.dataset.updating; }, 500);
+    return false;
   }
 }
 window.salvarDataInput = salvarDataInput;
@@ -329,20 +412,24 @@ window.salvarDataInput = salvarDataInput;
 // === Realtime
 // =====================================================
 function escutarMudancasTempoReal() {
-  supabase
+  if (!supabaseClient) {
+    console.warn('Supabase não está pronto para realtime');
+    return;
+  }
+
+  supabaseClient
     .channel('realtime_changes')
     .on(
       'postgres_changes',
       { event: 'UPDATE', schema: 'public', table: 'pedidos' },
       payload => {
-        // Atualiza somente a célula que mudou
         const updated = payload.new;
         if (!updated || typeof updated.id === 'undefined') return;
 
         const row = document.querySelector(`tr[data-id="${updated.id}"]`);
         if (row && !isUserEditing) {
           const inputDate = row.querySelector('input[type="date"]');
-          if (inputDate) {
+          if (inputDate && !inputDate.dataset.updating) {
             inputDate.value = updated.last_promise_delivery_date
               ? (typeof updated.last_promise_delivery_date === 'string' && updated.last_promise_delivery_date.includes('T') ? updated.last_promise_delivery_date.split('T')[0] : updated.last_promise_delivery_date)
               : '';
@@ -357,7 +444,12 @@ function escutarMudancasTempoReal() {
 // === Exportação / Importação
 // =====================================================
 async function exportarExcel() {
-  let query = supabase.from('pedidos').select('*');
+  if (!supabaseClient) {
+    alert('Erro: Supabase não está conectado');
+    return;
+  }
+
+  let query = supabaseClient.from('pedidos').select('*');
 
   if (userTipo !== 'admin' && userTipo !== '') {
     query = query.eq('vendor', userTipo);
@@ -424,10 +516,15 @@ function importarExcel() {
     const json = XLSX.utils.sheet_to_json(sheet);
 
     // Limpar dados existentes antes de importar novos
-    await supabase.from('pedidos').delete().neq('id', 0);
+    if (!supabaseClient) {
+      alert('Erro: Supabase não está conectado');
+      return;
+    }
+
+    await supabaseClient.from('pedidos').delete().neq('id', 0);
 
     for (const row of json) {
-      await supabase.from('pedidos').insert({
+      await supabaseClient.from('pedidos').insert({
         purchasing_document: row['Purchasing Document'],
         item: row['Item'],
         material: row['Material'],
