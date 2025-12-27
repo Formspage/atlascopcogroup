@@ -270,21 +270,34 @@ async function carregarDados(vendorFilter = null) {
 // =====================================================
 // === Datas
 // =====================================================
+function formatarDataBrasileira(dataISO) {
+  if (!dataISO || dataISO === "2001-01-01") return "";
+  const [ano, mes, dia] = dataISO.split("-");
+  return `${dia}/${mes}/${ano}`;
+}
+
+function formatarDataISO(dataBrasileira) {
+  if (!dataBrasileira) return "2001-01-01";
+  const [dia, mes, ano] = dataBrasileira.split("/");
+  return `${ano}-${mes.padStart(2, "0")}-${dia.padStart(2, "0")}`;
+}
+
+// Atualiza a data no Supabase
 async function salvarDataInput(input, id) {
   let novaData = input.value || "2001-01-01";
 
-  // Forçar formato YYYY-MM-DD
+  // Converter caso esteja em formato brasileiro
   if (novaData.includes("/")) {
     novaData = formatarDataISO(novaData);
   }
 
   try {
-    // Atualiza a data no Supabase e retorna o registro atualizado
+    // Atualiza a data e retorna o registro atualizado
     const { data, error } = await supabaseClient
       .from("pedidos")
       .update({ last_promise_delivery_date: novaData })
       .eq("id", id)
-      .select(); // ESSENCIAL: retorna o valor atualizado
+      .select(); // Importante para retornar valor atualizado
 
     if (error) {
       console.error("Erro ao salvar data:", error);
@@ -292,11 +305,11 @@ async function salvarDataInput(input, id) {
       return;
     }
 
-    // Atualiza o input com o valor que foi realmente salvo
+    // Atualiza o input com o valor que realmente ficou salvo no Supabase
     if (data && data.length > 0) {
       let saved = data[0].last_promise_delivery_date;
       if (saved && saved.includes("T")) {
-        saved = saved.split("T")[0];
+        saved = saved.split("T")[0]; // remove horário
       }
       input.value = saved || novaData;
     }
@@ -306,20 +319,61 @@ async function salvarDataInput(input, id) {
   }
 }
 
-// === No carregamento das linhas ===
-inputDate.onchange = async () => {
-  try {
+// === No carregamento das linhas da tabela ===
+data.forEach((row) => {
+  const tdDate = document.createElement("td");
+  const inputDate = document.createElement("input");
+
+  inputDate.type = "date";
+  inputDate.value = row.last_promise_delivery_date || "2001-01-01";
+
+  inputDate.style.width = "100%";
+  inputDate.style.minWidth = "16rem";
+  inputDate.style.border = "1px solid #ccc";
+  inputDate.style.padding = "0.8rem";
+  inputDate.style.fontSize = "1.3rem";
+
+  // Marcar que o usuário está editando
+  inputDate.onfocus = () => {
     isUserEditing = true;
     currentEditingElement = inputDate;
-    await salvarDataInput(inputDate, row.id);
-  } finally {
-    // dá um tempo para o Realtime não sobrescrever imediatamente
+    scrollPosition = window.pageYOffset || document.documentElement.scrollTop;
+  };
+
+  inputDate.onblur = () => {
     setTimeout(() => {
       isUserEditing = false;
       currentEditingElement = null;
     }, 200);
-  }
-};
+  };
+
+  // Atualizar Supabase ao alterar
+  inputDate.onchange = async () => {
+    if (!row.id) {
+      console.error("ID do registro ausente, não é possível atualizar");
+      return;
+    }
+
+    try {
+      isUserEditing = true;
+      currentEditingElement = inputDate;
+      console.log("Atualizando ID:", row.id, "para", inputDate.value);
+      await salvarDataInput(inputDate, row.id);
+    } finally {
+      setTimeout(() => {
+        isUserEditing = false;
+        currentEditingElement = null;
+      }, 200);
+    }
+  };
+
+  tdDate.appendChild(inputDate);
+  tdDate.style.backgroundColor = "#e8f5e8";
+  tdDate.style.minWidth = "18rem";
+  tdDate.style.width = "18rem";
+
+  tr.appendChild(tdDate);
+});
 
 // =====================================================
 // === Realtime
