@@ -270,35 +270,21 @@ async function carregarDados(vendorFilter = null) {
 // =====================================================
 // === Datas
 // =====================================================
-function formatarDataBrasileira(dataISO) {
-  if (!dataISO || dataISO === "2001-01-01") return "";
-  const [ano, mes, dia] = dataISO.split("-");
-  return `${dia}/${mes}/${ano}`;
-}
-
-function formatarDataISO(dataBrasileira) {
-  if (!dataBrasileira) return "2001-01-01";
-  const [dia, mes, ano] = dataBrasileira.split("/");
-  return `${ano}-${mes.padStart(2, "0")}-${dia.padStart(2, "0")}`;
-}
-
 async function salvarDataInput(input, id) {
-  // pega valor do input (YYYY-MM-DD) — compatível com coluna date
   let novaData = input.value || "2001-01-01";
-  // garante formato YYYY-MM-DD (input type=date normalmente já fornece)
-  // Se usuário colar outro formato, tentamos converter
+
+  // Forçar formato YYYY-MM-DD
   if (novaData.includes("/")) {
     novaData = formatarDataISO(novaData);
   }
-  // manter o input visual consistente até confirmação do banco
-  input.value = novaData;
 
   try {
+    // Atualiza a data no Supabase e retorna o registro atualizado
     const { data, error } = await supabaseClient
       .from("pedidos")
       .update({ last_promise_delivery_date: novaData })
       .eq("id", id)
-      .select();
+      .select(); // ESSENCIAL: retorna o valor atualizado
 
     if (error) {
       console.error("Erro ao salvar data:", error);
@@ -306,17 +292,13 @@ async function salvarDataInput(input, id) {
       return;
     }
 
-    // se o banco devolveu o registro atualizado, sincroniza o input com o valor exato do banco
+    // Atualiza o input com o valor que foi realmente salvo
     if (data && data.length > 0) {
       let saved = data[0].last_promise_delivery_date;
-      if (typeof saved === "string" && saved.includes("T")) {
+      if (saved && saved.includes("T")) {
         saved = saved.split("T")[0];
       }
       input.value = saved || novaData;
-      console.log("Data atualizada com sucesso:", data);
-    } else {
-      // caso não tenha retornado registro, mantemos o valor que tentamos salvar
-      input.value = novaData;
     }
   } catch (error) {
     console.error("Erro ao salvar data:", error);
@@ -324,7 +306,20 @@ async function salvarDataInput(input, id) {
   }
 }
 
-window.salvarDataInput = salvarDataInput;
+// === No carregamento das linhas ===
+inputDate.onchange = async () => {
+  try {
+    isUserEditing = true;
+    currentEditingElement = inputDate;
+    await salvarDataInput(inputDate, row.id);
+  } finally {
+    // dá um tempo para o Realtime não sobrescrever imediatamente
+    setTimeout(() => {
+      isUserEditing = false;
+      currentEditingElement = null;
+    }, 200);
+  }
+};
 
 // =====================================================
 // === Realtime
