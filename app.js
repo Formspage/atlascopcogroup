@@ -35,7 +35,7 @@ window.addEventListener("DOMContentLoaded", async () => {
 // =====================================================
 async function carregarVendorCodes() {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseClient
       .from("pedidos")
       .select("vendor")
       .not("vendor", "is", null);
@@ -65,14 +65,11 @@ async function carregarVendorCodes() {
 // =====================================================
 async function atualizarDatasVazias() {
   try {
-    const { error } = await supabase
+    // Ajuste: remover comparação com string vazia "" (gera erro em DATE)
+    const { error } = await supabaseClient
       .from("pedidos")
       .update({ last_promise_delivery_date: "2001-01-01" })
-      .or(
-        "last_promise_delivery_date.is.null," +
-          "last_promise_delivery_date.eq.," +
-          'last_promise_delivery_date.eq.""',
-      );
+      .or("last_promise_delivery_date.is.null");
 
     if (error) {
       console.error("Erro ao atualizar datas vazias:", error);
@@ -136,6 +133,8 @@ async function verificarCodigo() {
     acessoMsg.textContent = "Código de acesso inválido";
   }
 }
+
+window.verificarCodigo = verificarCodigo;
 
 // =====================================================
 // === Carregamento de Dados
@@ -268,7 +267,7 @@ async function salvarDataInput(input, id) {
   input.value = novaData;
 
   try {
-    const { error } = await supabase
+    const { error } = await supabaseClient
       .from("pedidos")
       .update({ last_promise_delivery_date: novaData })
       .eq("id", id);
@@ -289,7 +288,7 @@ window.salvarDataInput = salvarDataInput;
 // === Realtime
 // =====================================================
 function escutarMudancasTempoReal() {
-  supabase
+  supabaseClient
     .channel("realtime_changes")
     .on(
       "postgres_changes",
@@ -369,9 +368,61 @@ async function exportarExcel() {
 
 window.exportarExcel = exportarExcel;
 
-// =====================================================
-// === Voltar ao Menu
-// =====================================================
+// IMPORTAR EXCEL
+function importarExcel() {
+  const fileInput = document.getElementById("escolherArquivo") || document.getElementById("adminInputFile");
+  const file = fileInput.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    const data = new Uint8Array(e.target.result);
+    const workbook = XLSX.read(data, { type: "array" });
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const json = XLSX.utils.sheet_to_json(sheet);
+
+    // Limpar dados existentes antes de importar novos
+    await supabaseClient.from('pedidos').delete().neq('id', 0);
+
+    for (const row of json) {
+      await supabaseClient.from('pedidos').insert({
+        purchasing_document: row['Purchasing Document'],
+        item: row['Item'],
+        material: row['Material'],
+        description: row['Description'],
+        document_date: formatDate(row['Document Date']),
+        vendor: row['Vendor'],
+        vendor_name: row['Vendor Name'],
+        order_qty_to_be_delivered: row['Order Qty To Be Delivered'],
+        requested_ship_date: formatDate(row['Requested Ship Date']),
+        last_promise_delivery_date: formatDate(row['Last Promise Delivery Date']) || '9999-01-01',
+      });
+    }
+    carregarDados();
+    // Recarregar vendor codes após importação
+    await carregarVendorCodes();
+    alert('Importação concluída com sucesso!');
+  };
+  reader.readAsArrayBuffer(file);
+}
+window.importarExcel = importarExcel;
+
+// Função para formatar datas do Excel
+function formatDate(value) {
+  if (!value) return '';
+  if (typeof value === 'number') {
+    const date = new Date((value - 25569) * 86400 * 1000);
+    if (isNaN(date)) return '';
+    return date.toISOString().split('T')[0];
+  }
+  if (typeof value === 'string') {
+    const d = new Date(value);
+    if (!isNaN(d)) return d.toISOString().split('T')[0];
+    return value;
+  }
+  return '';
+}
+
 function voltarMenu() {
   document.getElementById("codigoAcesso").value = "";
   document.getElementById("acessoMsg").textContent = "";
@@ -380,3 +431,4 @@ function voltarMenu() {
   document.querySelector("#tabelaDados tbody").innerHTML = "";
   document.querySelector(".home .image").style.display = "flex";
 }
+window.voltarMenu = voltarMenu;
