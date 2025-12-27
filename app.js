@@ -270,51 +270,79 @@ async function carregarDados(vendorFilter = null) {
 // =====================================================
 // === Datas
 // =====================================================
-function formatarDataBrasileira(dataISO) {
-  if (!dataISO || dataISO === "2001-01-01") return "";
-  const [ano, mes, dia] = dataISO.split("-");
-  return `${dia}/${mes}/${ano}`;
-}
-
-function formatarDataISO(dataBrasileira) {
-  if (!dataBrasileira) return "2001-01-01";
-  const [dia, mes, ano] = dataBrasileira.split("/");
-  return `${ano}-${mes.padStart(2, "0")}-${dia.padStart(2, "0")}`;
-}
-
-// Salva data no Supabase
+// =====================================================
+// === Salva data no Supabase (VERSÃO CORRETA)
+// =====================================================
 async function salvarDataInput(input, id) {
-  let novaData = input.value || "2001-01-01";
-
-  if (novaData.includes("/")) {
-    novaData = formatarDataISO(novaData);
-  }
+  const novaData = input.value || "2001-01-01"; // YYYY-MM-DD
 
   try {
     const { data, error } = await supabaseClient
       .from("pedidos")
       .update({ last_promise_delivery_date: novaData })
       .eq("id", id)
-      .select(); // Retorna o valor atualizado
+      .select("last_promise_delivery_date");
 
     if (error) {
       console.error("Erro ao salvar data:", error);
-      alert("Erro ao salvar a data. Tente novamente.");
+      alert("Erro ao salvar a data.");
       return;
     }
 
     if (data && data.length > 0) {
-      let saved = data[0].last_promise_delivery_date;
-      if (saved && saved.includes("T")) {
-        saved = saved.split("T")[0];
-      }
-      input.value = saved || novaData;
+      // Garante que o input fique com o valor salvo
+      input.value = data[0].last_promise_delivery_date;
     }
-  } catch (error) {
-    console.error("Erro ao salvar data:", error);
-    alert("Erro ao salvar a data. Tente novamente.");
+  } catch (err) {
+    console.error("Erro inesperado:", err);
   }
 }
+
+// =====================================================
+// === Durante o carregamento das linhas da tabela ===
+// =====================================================
+data.forEach((row) => {
+  const tdDate = document.createElement("td");
+  const inputDate = document.createElement("input");
+
+  inputDate.type = "date";
+  inputDate.value = row.last_promise_delivery_date
+    ? row.last_promise_delivery_date.split("T")[0]
+    : "2001-01-01";
+
+  inputDate.style.width = "100%";
+  inputDate.style.minWidth = "16rem";
+  inputDate.style.border = "1px solid #ccc";
+  inputDate.style.padding = "0.8rem";
+  inputDate.style.fontSize = "1.3rem";
+
+  inputDate.onfocus = () => {
+    isUserEditing = true;
+    currentEditingElement = inputDate;
+  };
+
+  inputDate.onblur = () => {
+    setTimeout(() => {
+      isUserEditing = false;
+      currentEditingElement = null;
+    }, 200);
+  };
+
+  inputDate.onchange = async () => {
+    if (!row.id) return;
+    isUserEditing = true;
+    currentEditingElement = inputDate;
+    await salvarDataInput(inputDate, row.id);
+    setTimeout(() => {
+      isUserEditing = false;
+      currentEditingElement = null;
+    }, 200);
+  };
+
+  tdDate.appendChild(inputDate);
+  tr.appendChild(tdDate);
+});
+
 
 // =====================================================
 // === Realtime
