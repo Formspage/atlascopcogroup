@@ -293,59 +293,50 @@ async function carregarDados(vendorFilter = null) {
   }
 }
 
+/// =====================================================
+// === Datas
 // =====================================================
-// === Datas helpers
-// =====================================================
-function formatarDataBrasileira(dataISO) {
-  if (!dataISO) return "";
-  // espera YYYY-MM-DD ou ISO
-  const d = (typeof dataISO === "string" && dataISO.includes("T")) ? dataISO.split("T")[0] : dataISO;
-  const [ano, mes, dia] = d.split("-");
-  if (!dia || !mes || !ano) return "";
-  return `${dia}/${mes}/${ano}`;
+function formatarDataISO(data) {
+  if (!data) return "2001-01-01";
+
+  // Já está em ISO
+  if (data.includes("-")) return data;
+
+  // Converte BR → ISO
+  const [dia, mes, ano] = data.split("/");
+  return `${ano}-${mes.padStart(2, "0")}-${dia.padStart(2, "0")}`;
 }
 
 // =====================================================
-// === Salva data no Supabase (VERSÃO CORRETA)
+// === Salvar data no Supabase
 // =====================================================
 async function salvarDataInput(input, id) {
-  // input.value já vem como YYYY-MM-DD quando type="date"
-  const novaData = input.value ? input.value : null; // null => liberar campo no banco
+  const novaData = formatarDataISO(input.value);
 
-  try {
-    const { data, error } = await supabaseClient
-      .from("pedidos")
-      .update({ last_promise_delivery_date: novaData })
-      .eq("id", id)
-      .select("last_promise_delivery_date");
+  const { data, error } = await supabaseClient
+    .from("pedidos")
+    .update({
+      last_promise_delivery_date: novaData
+    })
+    .eq("id", id)
+    .select("last_promise_delivery_date");
 
-    if (error) {
-      console.error("Erro ao salvar data:", error);
-      alert("Erro ao salvar a data. Verifique permissões/RLS.");
-      return;
-    }
+  if (error) {
+    console.error("Erro ao salvar data:", error);
+    alert("Erro ao salvar a data");
+    return;
+  }
 
-    if (data && data.length > 0) {
-      const saved = data[0].last_promise_delivery_date;
-      // Normaliza pra YYYY-MM-DD ou vazio
-      input.value = saved ? (typeof saved === "string" && saved.includes("T") ? saved.split("T")[0] : saved) : "";
-      console.log("Data salva com sucesso (id=" + id + "):", input.value);
-    } else {
-      // sem retorno de registro atualizado: mantemos valor do input
-      console.warn("Update retornou sem dados: id=", id);
-    }
-  } catch (err) {
-    console.error("Erro inesperado ao salvar data:", err);
-    alert("Erro inesperado ao salvar a data.");
+  // Garante que o input fique com o valor REAL do banco
+  if (data && data.length > 0) {
+    input.value = data[0].last_promise_delivery_date;
   }
 }
-window.salvarDataInput = salvarDataInput;
 
 // =====================================================
-// === Realtime (atualiza apenas a célula modificada)
+// === Realtime
 // =====================================================
 function escutarMudancasTempoReal() {
-  // Subscrição para UPDATE na tabela pedidos
   supabaseClient
     .channel("realtime_changes")
     .on(
@@ -353,22 +344,74 @@ function escutarMudancasTempoReal() {
       { event: "UPDATE", schema: "public", table: "pedidos" },
       (payload) => {
         const updated = payload.new;
-        if (!updated || typeof updated.id === "undefined") return;
-
-        // Atualiza somente a célula que mudou, se não estiver sendo editada
         const row = document.querySelector(`tr[data-id="${updated.id}"]`);
-        if (row && !isUserEditing) {
-          const inputDate = row.querySelector('input[type="date"]');
-          if (inputDate) {
-            inputDate.value = updated.last_promise_delivery_date
-              ? (typeof updated.last_promise_delivery_date === "string" && updated.last_promise_delivery_date.includes("T") ? updated.last_promise_delivery_date.split("T")[0] : updated.last_promise_delivery_date)
-              : "";
-          }
+
+        if (!row || isUserEditing) return;
+
+        const inputDate = row.querySelector('input[type="date"]');
+        if (inputDate) {
+          inputDate.value = updated.last_promise_delivery_date
+            ? updated.last_promise_delivery_date.split("T")[0]
+            : "2001-01-01";
         }
       }
     )
     .subscribe();
 }
+
+// =====================================================
+// === Durante o carregamento das linhas da tabela ===
+// =====================================================
+data.forEach((row) => {
+  const tdDate = document.createElement("td");
+  const inputDate = document.createElement("input");
+
+  inputDate.type = "date";
+
+  // ⚠️ SEMPRE ISO
+  inputDate.value = row.last_promise_delivery_date
+    ? row.last_promise_delivery_date.split("T")[0]
+    : "2001-01-01";
+
+  inputDate.style.width = "100%";
+  inputDate.style.minWidth = "16rem";
+  inputDate.style.border = "1px solid #ccc";
+  inputDate.style.padding = "0.8rem";
+  inputDate.style.fontSize = "1.3rem";
+
+  inputDate.onfocus = () => {
+    isUserEditing = true;
+    currentEditingElement = inputDate;
+  };
+
+  inputDate.onblur = () => {
+    setTimeout(() => {
+      isUserEditing = false;
+      currentEditingElement = null;
+    }, 200);
+  };
+
+  inputDate.onchange = async () => {
+    if (!row.id) return;
+
+    isUserEditing = true;
+    currentEditingElement = inputDate;
+
+    await salvarDataInput(inputDate, row.id);
+
+    setTimeout(() => {
+      isUserEditing = false;
+      currentEditingElement = null;
+    }, 200);
+  };
+
+  tdDate.appendChild(inputDate);
+  tdDate.style.backgroundColor = "#e8f5e8";
+  tdDate.style.minWidth = "18rem";
+  tdDate.style.width = "18rem";
+
+  tr.appendChild(tdDate);
+});
 
 // =====================================================
 // === Exportação / Importação
